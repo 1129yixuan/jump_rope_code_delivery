@@ -1,42 +1,14 @@
+import csv
 import json
 import math
-import os
 from collections import Counter, defaultdict
 from pathlib import Path
 from statistics import median
 
-import openpyxl
-
-
 ROOT = Path(__file__).resolve().parent
-DEFAULT_WORKBOOK = ROOT.parent / "jump_rope" / "venue_2_three_algorithm_accuracy.xlsx"
-LEGACY_WORKBOOK = ROOT.parent / "jump_rope" / "\u0032\u53f7\u573a\u5730_\u4e09\u7248\u7b97\u6cd5\u51c6\u786e\u7387.xlsx"
-WORKBOOK = Path(
-    os.environ.get(
-        "DASHBOARD_WORKBOOK",
-        DEFAULT_WORKBOOK if DEFAULT_WORKBOOK.exists() or not LEGACY_WORKBOOK.exists() else LEGACY_WORKBOOK,
-    )
-)
+DATASET = ROOT / "evaluation_records.csv"
 OUT = ROOT / "data.js"
 THRESHOLD = 10
-VENUE_2 = "Venue 2"
-
-SHEET_ALIASES = (
-    "Position Comparison",
-    "\u9010\u70b9\u4f4d\u5bf9\u6bd4",
-)
-
-COLUMN_ALIASES = {
-    "excel_row": ("Excel Row", "\u0045\u0078\u0063\u0065\u006c\u884c"),
-    "venue": ("Venue", "\u573a\u5730"),
-    "file_name": ("File Name", "\u6587\u4ef6\u540d"),
-    "video_id": ("Video ID", "\u89c6\u9891\u0049\u0044"),
-    "position": ("Position", "\u70b9\u4f4d"),
-    "actual_score": ("Actual Score", "\u5b9e\u9645\u6210\u7ee9"),
-    "original_score": ("Original Score", "\u539f\u6210\u7ee9"),
-    "routed_score": ("Routed (New)", "\u5206\u6d41\uff08\u65b0\uff09"),
-    "tcn": ("TCN",),
-}
 
 
 def is_number(value):
@@ -193,27 +165,24 @@ def histogram(values, bins):
     return counts
 
 
-def build_record(row_index, row, header):
-    def value(name):
-        return row[header[name]]
-
-    actual = as_number(value("actual_score"))
-    original = as_number(value("original_score"))
-    routed = as_number(value("routed_score"))
-    tcn = as_number(value("tcn"))
-    file_name = str(value("file_name") or "")
-    video = str(value("video_id") or file_name.replace(".mkv", ""))
-    zone = as_number(value("position"))
+def build_record(row_index, row):
+    actual = as_number(row.get("actual_count"))
+    original = as_number(row.get("shoulder_count"))
+    routed = as_number(row.get("routing_count"))
+    tcn = as_number(row.get("tcn_count"))
+    file_name = str(row.get("file_name") or "")
+    video = str(row.get("video_id") or file_name.replace(".mkv", ""))
+    zone = as_number(row.get("position"))
+    area = str(row.get("venue") or "")
     record = {
-        "id": f"venue-2-{row_index}-{zone}",
-        "area": VENUE_2,
-        "row": as_number(value("excel_row")) or row_index,
+        "id": row.get("record_id") or f"record-{row_index}",
+        "area": area,
+        "row": as_number(row.get("source_row")) or row_index,
         "file": file_name,
         "video": video,
-        "lane": "2",
+        "lane": area.replace("Venue ", ""),
         "zone": zone,
-        "name": "",
-        "school": "",
+        "evaluationSplit": row.get("evaluation_split") or "",
         "original": original,
         "new": routed,
         "tcnPeak": tcn,
@@ -238,35 +207,33 @@ def build_record(row_index, row, header):
 
 
 def load_records():
-    workbook = openpyxl.load_workbook(WORKBOOK, data_only=True)
-    sheet_name = next((name for name in SHEET_ALIASES if name in workbook.sheetnames), None)
-    if sheet_name is None:
-        expected = " or ".join(repr(name) for name in SHEET_ALIASES)
-        raise ValueError(f"Workbook is missing the expected sheet: {expected}")
-    sheet = workbook[sheet_name]
-    header_values = [cell.value for cell in sheet[1]]
-    source_header = {name: index for index, name in enumerate(header_values) if name}
-    header = {
-        key: next((source_header[alias] for alias in aliases if alias in source_header), None)
-        for key, aliases in COLUMN_ALIASES.items()
+    with DATASET.open(encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    required = {
+        "record_id",
+        "venue",
+        "video_id",
+        "file_name",
+        "position",
+        "actual_count",
+        "shoulder_count",
+        "routing_count",
+        "tcn_count",
+        "evaluation_split",
+        "source_row",
     }
-    missing = [key for key, index in header.items() if index is None]
+    missing = sorted(required - set(rows[0] if rows else ()))
     if missing:
-        raise ValueError(f"Position comparison sheet is missing columns: {', '.join(sorted(missing))}")
-
-    records = []
-    for row_index, row_values in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
-        if not any(value is not None for value in row_values):
-            continue
-        record = build_record(row_index, row_values, header)
-        if record["area"] == VENUE_2 and is_number(record.get("zone")):
-            records.append(record)
-    workbook.close()
-    return records
+        raise ValueError(f"Evaluation dataset is missing columns: {', '.join(missing)}")
+    return [build_record(index, row) for index, row in enumerate(rows, start=2)]
 
 
 def main():
-    records = load_records()
+    records = [
+        row
+        for row in load_records()
+        if is_number(row.get("actual")) and is_number(row.get("tcnPeak"))
+    ]
     actual_rows = [row for row in records if is_number(row.get("actual"))]
     output_rows = [row for row in records if any(is_number(row.get(key)) for key in ("original", "new", "tcnPeak"))]
     tcn_rows = [row for row in actual_rows if is_number(row.get("tcnPeak"))]
@@ -275,10 +242,11 @@ def main():
 
     data = {
         "meta": {
-            "sourceWorkbook": str(WORKBOOK),
-            "generatedAt": "2026-07-02",
+            "sourceDataset": "analysis_dashboard/evaluation_records.csv",
+            "generatedAt": "2026-08-28",
             "threshold": THRESHOLD,
-            "scope": "Venue 2 only; Venue 1 is training data and is excluded from evaluation",
+            "scope": "Venue 1 and Venue 2 records with both ground truth and TCN output",
+            "evaluationNote": "Venue 1 uses out-of-fold cross-validation predictions; Venue 2 uses independent predictions.",
             "actualRows": len(actual_rows),
             "outputRows": len(output_rows),
             "tcnPeakRows": len(tcn_rows),

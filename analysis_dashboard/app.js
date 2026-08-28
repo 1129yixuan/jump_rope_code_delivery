@@ -34,7 +34,7 @@ function shortFile(file) {
 
 function renderMeta() {
   document.querySelector("#meta").textContent =
-    `${data.meta.actualRows} Venue 2 ground-truth records · ${data.meta.tcnPeakRows} TCN outputs · ${data.meta.outputRows} total outputs · tolerance ±${data.meta.threshold}`;
+    `${data.meta.actualRows} ground-truth records across Venue 1 and Venue 2 · ${data.meta.tcnPeakRows} TCN outputs · tolerance ±${data.meta.threshold}`;
 }
 
 function renderAccuracyKpis() {
@@ -51,7 +51,7 @@ function renderAccuracyKpis() {
     metric("TCN accuracy", fmtPct(tcnPeak.acc10), `${tcnPeak.n} matched records, MAE ${fmtNum(tcnPeak.mae)}`, "good"),
     metric("TCN vs routing", `${tcnDelta >= 0 ? "+" : ""}${fmtPct(tcnDelta)}`, `${tcnPeak.ok10 - tcnPaired.new.ok10} additional hits across ${tcnPeak.n} records, MAE reduced by ${fmtNum(tcnMaeDelta)}`, tcnDelta >= 0 ? "good" : "warn"),
     metric("TCN vs shoulder", `${tcnVsOriginal >= 0 ? "+" : ""}${fmtPct(tcnVsOriginal)}`, `${tcnPeak.ok10 - tcnPaired.original.ok10} additional hits across ${tcnPeak.n} records`, tcnVsOriginal >= 0 ? "good" : "warn"),
-    metric("Evaluation scope", "Venue 2", data.meta.scope || "Venue 1 is excluded from evaluation"),
+    metric("Evaluation scope", "Venues 1 + 2", data.meta.evaluationNote || data.meta.scope),
   ].join("");
 }
 
@@ -177,7 +177,7 @@ function matchesRecordArea(row, filters) {
 
 function matchesRecordQuery(row, filters) {
   if (!filters.query) return true;
-  return `${row.file} ${row.name} ${row.school}`.toLowerCase().includes(filters.query);
+  return `${row.file} ${row.video}`.toLowerCase().includes(filters.query);
 }
 
 function matchesRecordZone(row, filters) {
@@ -461,7 +461,6 @@ function renderRecordTable() {
       <td>${row.area}</td>
       <td>${shortFile(row.file)}</td>
       <td class="num">${row.zone}</td>
-      <td>${row.name || "-"}</td>
       <td class="num">${isNum(row.actual) ? row.actual : "-"}</td>
       <td class="num">${isNum(row.original) ? row.original : "-"}</td>
       <td class="num">${pill(row.originalError, row.originalAcc10)}</td>

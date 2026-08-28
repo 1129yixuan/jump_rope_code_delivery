@@ -3,13 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Venue 2 Jump Rope Counting Analysis</title>
+    <title>Venue 1 and Venue 2 Jump Rope Counting Analysis</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <header class="topbar">
       <div>
-        <h1>Venue 2 Jump Rope Counting Analysis</h1>
+        <h1>Venue 1 and Venue 2 Jump Rope Counting Analysis</h1>
         <p>Shoulder Algorithm vs Routing Algorithm vs TCN Model</p>
       </div>
       <div class="meta" id="meta"></div>
@@ -50,7 +50,7 @@
         <section class="panel">
           <div class="panel-head">
             <h2>Accuracy by Video</h2>
-            <input id="videoSearch" type="search" placeholder="Search videos or participants" />
+            <input id="videoSearch" type="search" placeholder="Search videos" />
           </div>
           <div class="table-wrap">
             <table>
@@ -95,6 +95,7 @@
             <h2>Output Differences by Video</h2>
             <select id="outputArea">
               <option value="all">All venues</option>
+              <option value="Venue 1">Venue 1</option>
               <option value="Venue 2">Venue 2</option>
             </select>
           </div>
@@ -218,7 +219,7 @@
                   <h3>Current Evaluation Definition</h3>
                   <p>Training supervision comes from manual per-jump labels rather than pseudo-label intervals produced by the routing algorithm.</p>
                   <p>Counting still uses probability peaks, but each target peak comes from the center of a manually confirmed jump.</p>
-                  <p>This dashboard evaluates Venue 2 only; Venue 1 is training data and is excluded from evaluation.</p>
+                  <p>This dashboard includes every Venue 1 and Venue 2 record that has both a ground-truth score and a TCN model output.</p>
                 </section>
 
                 <section class="diagram-section">
@@ -228,7 +229,7 @@
                     <article><h4>Samples and Input</h4><ul><li>One sample per video + zone</li><li>Pose features: T x 55</li><li>Includes area and zone metadata</li><li>Timeline is uniformly resampled</li></ul></article>
                     <article><h4>Manual Intervals</h4><ul><li>Read `annotations/*.jump.json`</li><li>Select intervals by zone</li><li>Each record has `start` and `end`</li><li>Interval count is the supervised count</li></ul></article>
                     <article><h4>Heatmap Target</h4><ul><li>Use each interval center</li><li>Map it to the model timeline</li><li>Place a Gaussian peak nearby</li><li>Merge multiple peaks into the 0-1 range</li></ul></article>
-                    <article><h4>Evaluation Isolation</h4><ul><li>Venue 1 is used for training</li><li>Venue 2 is used for this dashboard</li><li>Training samples do not enter accuracy</li><li>Rows align with workbook positions</li></ul></article>
+                    <article><h4>Evaluation Coverage</h4><ul><li>Venue 1 uses out-of-fold predictions</li><li>Venue 2 uses independent predictions</li><li>Every row has ground truth and TCN output</li><li>Rows align with source positions</li></ul></article>
                   </div>
                 </section>
 
@@ -237,7 +238,7 @@
                   <div class="diagram-cards three">
                     <article><h4>Model Input</h4><ul><li>Body-centered keypoint x/y</li><li>Keypoint confidence</li><li>Shoulder, hip, and ankle motion</li><li>Frame visibility</li></ul></article>
                     <article><h4>Model Output</h4><ul><li>One jump logit per frame</li><li>Sigmoid produces jump probability</li><li>High probability aligns with label centers</li><li>TCN captures temporal context</li></ul></article>
-                    <article><h4>Training Constraints</h4><ul><li>Manual heatmap is the primary target</li><li>Optional count-consistency loss</li><li>Samples are grouped by video</li><li>Evaluation venue leakage is avoided</li></ul></article>
+                    <article><h4>Training Constraints</h4><ul><li>Manual heatmap is the primary target</li><li>Optional count-consistency loss</li><li>Validation samples are grouped by video</li><li>Venue 2 remains an independent evaluation</li></ul></article>
                   </div>
                 </section>
 
@@ -247,23 +248,23 @@
                     <article><h4>Candidate Peaks</h4><ul><li>Probability exceeds the threshold</li><li>Point must be a local maximum</li><li>Neighboring peaks must be far enough apart</li><li>Only the higher nearby peak is retained</li></ul></article>
                     <article><h4>Final Count</h4><ul><li>Selected peaks = predicted jumps</li><li>Output is an integer competition score</li><li>Each predicted frame can be reviewed</li><li>Overcounts and misses are traceable</li></ul></article>
                     <article><h4>Ground-Truth Alignment</h4><ul><li>TCN column stores model counts</li><li>Error = TCN - actual score</li><li>Accuracy uses ±5 and ±10</li><li>Only positions with ground truth are included</li></ul></article>
-                    <article><h4>Dashboard Display</h4><ul><li>Model name is consistently TCN</li><li>Pseudo-label metrics are omitted</li><li>TCN is compared with shoulder and routing</li><li>Venue 2 includes 245 evaluated positions</li></ul></article>
+                    <article><h4>Dashboard Display</h4><ul><li>Model name is consistently TCN</li><li>Pseudo-label metrics are omitted</li><li>TCN is compared with shoulder and routing</li><li>Both venues include 495 evaluated positions</li></ul></article>
                   </div>
                 </section>
 
                 <section class="diagram-section">
                   <h3>Step Four: Dashboard Evaluation Scope</h3>
                   <div class="diagram-cards three">
-                    <article><h4>Evaluation Data</h4><ul><li>Venue 2 only</li><li>Evaluated positions: 245</li><li>Manual scores are ground truth</li><li>Venue 1 is excluded from accuracy</li></ul></article>
-                    <article><h4>Current Results</h4><ul><li>±10 accuracy: 91.43%</li><li>±5 accuracy: 68.16%</li><li>MAE: 4.84</li><li>Mean bias: +3.29</li></ul></article>
-                    <article><h4>Interpretation</h4><ul><li>TCN output is a model peak count</li><li>Manual intervals supervise training</li><li>Manual scores evaluate Venue 2</li><li>Training and evaluation venues stay separate</li></ul></article>
+                    <article><h4>Evaluation Data</h4><ul><li>Venue 1: 250 positions</li><li>Venue 2: 245 positions</li><li>Total: 495 positions</li><li>Manual scores are ground truth</li></ul></article>
+                    <article><h4>Current Comparison</h4><ul><li>Shoulder, routing, and TCN counts</li><li>Accuracy at ±5 and ±10</li><li>MAE, bias, and maximum error</li><li>Breakdowns by venue, score, and position</li></ul></article>
+                    <article><h4>Interpretation</h4><ul><li>TCN output is a model peak count</li><li>Venue 1 results are out-of-fold</li><li>Venue 2 results are independent</li><li>Venue filters preserve separate inspection</li></ul></article>
                   </div>
                 </section>
 
                 <section class="diagram-summary">
                   <h3>Overall Strategy</h3>
                   <p>Manual intervals identify where each jump occurs. The TCN predicts a probability curve from pose sequences, and peak rules convert that curve into the final count.</p>
-                  <div><span>source = manual jump labels</span><span>output = TCN peak count</span><span>evaluation = Venue 2</span><span>n = 245</span><span>acc10 = 91.43%</span></div>
+                  <div><span>source = manual jump labels</span><span>output = TCN peak count</span><span>evaluation = Venues 1 + 2</span><span>n = 495</span><span>splits = OOF + independent</span></div>
                 </section>
               </div>
             </figure>
@@ -279,9 +280,10 @@
           </select>
           <select id="areaFilter">
             <option value="all">All Venues</option>
+            <option value="Venue 1">Venue 1</option>
             <option value="Venue 2">Venue 2</option>
           </select>
-          <input id="recordSearch" type="search" placeholder="Search videos, participants, or schools" />
+          <input id="recordSearch" type="search" placeholder="Search videos" />
         </section>
 
         <section class="trend-section">
@@ -305,7 +307,6 @@
                   <th>Venue</th>
                   <th>Video</th>
                   <th class="num">Position</th>
-                  <th>Participant</th>
                   <th class="num">Actual</th>
                   <th class="num">Shoulder</th>
                   <th class="num">Shoulder Error</th>

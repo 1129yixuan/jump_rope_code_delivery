@@ -1,13 +1,13 @@
 # Jump Rope Counting Algorithm Delivery
 
-This directory is the GitLab-ready delivery package exported from the local development workspace. It contains source code, configuration, documentation, and a prebuilt analysis dashboard.
+This directory is the GitHub-ready delivery package exported from the local development workspace. It contains source code, configuration, documentation, a de-identified evaluation dataset, and a prebuilt analysis dashboard.
 
 The package does not include:
 
 - Original videos
 - Large pose-estimation JSON files
 - Training output directories
-- Evaluation workbooks
+- Source evaluation workbooks containing participant information
 - Local virtual environments
 - Publishing tokens or host-specific credentials
 
@@ -64,15 +64,20 @@ analysis_dashboard/public_dashboard.html
 
 The page is self-contained and does not require a web server.
 
-To rebuild dashboard data from a workbook:
+The dashboard covers Venue 1 and Venue 2 using every record with both a ground-truth score and a TCN output. The included source dataset is:
+
+```text
+analysis_dashboard/evaluation_records.csv
+```
+
+It contains only analytical fields and excludes participant names and schools. See `analysis_dashboard/DATASET.md` for field definitions and evaluation-split details.
+
+To rebuild the dashboard from the included CSV:
 
 ```bash
-export DASHBOARD_WORKBOOK="/path/to/venue_2_three_algorithm_accuracy.xlsx"
 python analysis_dashboard/build_data.py
 python analysis_dashboard/build_public.py
 ```
-
-The data builder accepts the new English worksheet and column names. It also supports the legacy workbook schema for compatibility.
 
 ## Dependencies
 
