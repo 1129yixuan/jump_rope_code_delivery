@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+.venv_tcn/
+.viewer_venv/
+
+# OS/editor
+.DS_Store
+*.swp
+*.tmp
+
+# Runtime outputs
+outputs/
+output/
+analysis_dashboard/data.js
+analysis_dashboard/host_html_publish_response.json
+
+# Large/local data artifacts
+clips01_pose_json/
+clips02_pose_json/
+*.mkv
+*.mp4
+*.xlsx
+*.xls
+*.pt
+*.pth
+*.onnx
+*.engine

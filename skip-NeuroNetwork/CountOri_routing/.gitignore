@@ -1,0 +1,27 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv
+
+# Project outputs and caches
+output/
+trt_engine_cache/
+
+# Editor and OS files
+.DS_Store
+
+# User data
+data/
+models/
+config/

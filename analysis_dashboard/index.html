@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Venue 2 Jump Rope Counting Analysis</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Venue 2 Jump Rope Counting Analysis</h1>
+        <p>Shoulder Algorithm vs Routing Algorithm vs TCN Model</p>
+      </div>
+      <div class="meta" id="meta"></div>
+    </header>
+
+    <main>
+      <nav class="tabs" aria-label="Analysis views">
+        <button class="tab active" data-view="accuracy">Ground Truth</button>
+        <button class="tab" data-view="output">Output Differences</button>
+        <button class="tab" data-view="algorithm">Algorithm Analysis</button>
+        <button class="tab" data-view="records">Records</button>
+      </nav>
+
+      <section id="accuracy" class="view active">
+        <section class="summary-grid" id="accuracyKpis"></section>
+
+        <section class="split">
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Grouped Accuracy</h2>
+              <select id="accuracyGroup">
+                <option value="byArea">By venue</option>
+                <option value="byLevel">By score level</option>
+                <option value="byZone">By position</option>
+              </select>
+            </div>
+            <div id="accuracyGroupChart" class="bar-list"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <h2>Status Changes</h2>
+            </div>
+            <div id="statusChart" class="status-grid"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Accuracy by Video</h2>
+            <input id="videoSearch" type="search" placeholder="Search videos or participants" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Venue</th>
+                  <th>Video</th>
+                  <th class="num">Samples</th>
+                  <th class="num">Shoulder</th>
+                  <th class="num">Routing</th>
+                  <th class="num">TCN</th>
+                  <th class="num">Shoulder MAE</th>
+                  <th class="num">Routing MAE</th>
+                  <th class="num">TCN MAE</th>
+                </tr>
+              </thead>
+              <tbody id="videoTable"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section id="output" class="view">
+        <section class="summary-grid" id="outputKpis"></section>
+
+        <section class="panel output-diff-panel">
+          <div class="panel-head panel-head-stacked">
+            <div>
+              <h2>Absolute Difference Distribution</h2>
+              <p class="panel-note">
+                Absolute difference = |routing output - shoulder output|. It measures how far the two algorithm versions differ on the same record, without indicating which version is higher.
+              </p>
+            </div>
+          </div>
+          <div class="histogram-wrap">
+            <div id="diffHistogram" class="histogram"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Output Differences by Video</h2>
+            <select id="outputArea">
+              <option value="all">All venues</option>
+              <option value="Venue 2">Venue 2</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Venue</th>
+                  <th>Video</th>
+                  <th class="num">Samples</th>
+                  <th class="num">With Ground Truth</th>
+                  <th class="num">Routing Higher</th>
+                  <th class="num">Routing Lower</th>
+                  <th class="num">Mean Difference</th>
+                  <th class="num">Mean Absolute Difference</th>
+                  <th class="num">&gt;10</th>
+                </tr>
+              </thead>
+              <tbody id="outputVideoTable"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section id="algorithm" class="view">
+        <section class="algorithm-diagram-viewer" aria-label="Algorithm diagrams">
+          <input class="diagram-choice" type="radio" name="algorithmDiagram" id="diagram-routing" checked />
+          <input class="diagram-choice" type="radio" name="algorithmDiagram" id="diagram-tcn" />
+
+          <div class="diagram-options" role="tablist" aria-label="Select an algorithm">
+            <label for="diagram-routing" role="tab">Routing Algorithm</label>
+            <label for="diagram-tcn" role="tab">TCN Counting</label>
+          </div>
+
+          <div class="diagram-pages">
+            <figure class="algorithm-diagram-page diagram-routing-page">
+              <div class="diagram-html">
+                <header class="diagram-hero">
+                  <div>
+                    <h2>Current Routing Algorithm: Steps and Details</h2>
+                    <p>Detect valley-peak-valley jump candidates, run low, middle, and high paths in parallel, then route the final result for each zone.</p>
+                  </div>
+                  <span>CountOri_routing/scripts/count_video_people.py</span>
+                </header>
+
+                <div class="diagram-step-row">
+                  <article><b>1</b><h3>Input and Preprocessing</h3><p>Read pose JSON and zone configuration, apply `foot_in_zone` to ankle points, and keep the person with the largest `bbox_area` when several people occupy one zone.</p></article>
+                  <article><b>2</b><h3>Per-Frame Zone Accumulation</h3><p>Visit every zone in every frame. Once a person matches, use the zone ID as the person ID and update all candidate counters together.</p></article>
+                  <article><b>3</b><h3>Parallel Candidate Paths</h3><p>`low` is the base shoulder count, `middle` combines shoulder and ankle checks with zone tuning, and `high` is a more sensitive shoulder path for experts.</p></article>
+                </div>
+
+                <section class="diagram-note">
+                  <h3>Final Output</h3>
+                  <p>Routing selects `selected_algorithm_path` and writes `jump_count`, while preserving `routing_level`, `routing_reasons`, and `algorithm_counts`.</p>
+                </section>
+
+                <section class="diagram-section">
+                  <h3>Base Valley-Peak-Valley Counting Logic</h3>
+                  <p>Every shoulder-based path starts here: convert vertical body motion into a signal and identify one complete jump in that signal.</p>
+                  <div class="diagram-cards four">
+                    <article><h4>1. Build the Shoulder Signal</h4><ul><li>`mid_shoulder_y`: inverted mean shoulder y</li><li>`body_height_ref`: shoulder-to-hip height</li><li>Default `min_confidence`: 0.1</li></ul></article>
+                    <article><h4>2. Find Local Extrema</h4><ul><li>Default window: 7 frames</li><li>Local minimum = valley</li><li>Local maximum = peak</li></ul></article>
+                    <article><h4>3. Form a Jump Candidate</h4><ul><li>Must match valley -> peak -> valley</li><li>Rise and fall form one candidate</li><li>Duplicate candidates are avoided</li></ul></article>
+                    <article><h4>4. Validate and Count</h4><ul><li>Duration: 4-30 frames</li><li>Symmetry and height ratios must pass</li><li>Accepted candidate increments `jump_count`</li></ul></article>
+                  </div>
+                </section>
+
+                <section class="diagram-section">
+                  <h3>Three Candidate Paths</h3>
+                  <div class="diagram-cards three">
+                    <article><h4>low = shoulder</h4><ul><li>Uses the base shoulder counter</li><li>No ankle alternation validation</li><li>Conservative low-score path and feet-together fallback</li></ul></article>
+                    <article><h4>middle = zone-aware shoulder_ankle</h4><ul><li>Checks ankle rhythm after base validation</li><li>Zones 3/4/5 can override rejection thresholds</li><li>Also serves as the primary path</li></ul></article>
+                    <article><h4>high = expert shoulder</h4><ul><li>Still uses shoulder valley-peak-valley logic</li><li>Symmetry threshold drops from 0.12 to 0.10</li><li>Minimum height drops from 0.05 to 0.04</li></ul></article>
+                  </div>
+                </section>
+
+                <section class="diagram-section">
+                  <h3>Stage One: Coarse `build_level_routing`</h3>
+                  <div class="diagram-cards three">
+                    <article><h4>Base Segments</h4><ul><li>`middle >= 130` -> high</li><li>`middle < 100` -> low or low candidate</li><li>Otherwise -> normal / middle</li></ul></article>
+                    <article><h4>High Candidate</h4><ul><li>`middle < 130` and zone in {3, 5}</li><li>`shoulder_height < 0.10`</li><li>Small shoulder amplitude may indicate an expert</li></ul></article>
+                    <article><h4>Low Candidate</h4><ul><li>`100 <= middle <= 115` and `shoulder_height >= 0.11`</li><li>Ankle rhythm is low or missing</li><li>Or ankle count is much higher than middle</li></ul></article>
+                  </div>
+                </section>
+
+                <section class="diagram-section">
+                  <h3>Stage Two: Zone Corrections, Rescue, and Suppression</h3>
+                  <div class="diagram-cards three">
+                    <article><h4>Near Zones 1/2</h4><ul><li>Prefer the middle path by default</li><li>Rescue when low and high clearly exceed middle</li><li>Suppress large-amplitude, fragmented low/middle cases</li></ul></article>
+                    <article><h4>Distant Zones 3/4/5</h4><ul><li>Run a second low-candidate check</li><li>Stable middle with small path spread -> middle</li><li>Suppress abnormal low scores by 0.90 or 0.85</li></ul></article>
+                    <article><h4>Feet-Together Fallback</h4><ul><li>`ankle_strength < 0.023`</li><li>`ankle_only / shoulder >= 0.85`</li><li>When both pass, fall back to shoulder</li></ul></article>
+                  </div>
+                </section>
+
+                <section class="diagram-summary">
+                  <h3>Overall Strategy</h3>
+                  <p>The base counter recognizes jumps through shoulder valley-peak-valley patterns. The routing layer selects, rescues, or suppresses one of the three candidate results.</p>
+                  <div><span>routing_version = new</span><span>count_mode = shoulder_ankle</span><span>output = per-zone JSON</span></div>
+                </section>
+              </div>
+            </figure>
+
+            <figure class="algorithm-diagram-page diagram-tcn-page">
+              <div class="diagram-html">
+                <header class="diagram-hero">
+                  <div>
+                    <h2>TCN Counting with Manual Supervision</h2>
+                    <p>Train frame-level jump probabilities from manually labeled jump intervals, then convert the probability curve into a count for each position.</p>
+                  </div>
+                  <span>annotations/*.jump.json + TCN</span>
+                </header>
+
+                <div class="diagram-step-row four">
+                  <article><b>1</b><h3>Read Manual Labels</h3><p>Read `.jump.json` for every video, select confirmed intervals by zone, and retain `start`, `end`, and `label`.</p></article>
+                  <article><b>2</b><h3>Build the Target Heatmap</h3><p>Place a Gaussian peak at the center of each interval on the normalized timeline to mark that a jump occurs near that frame.</p></article>
+                  <article><b>3</b><h3>Train the TCN</h3><p>Input pose-sequence features for each position and predict a jump probability per frame. The model learns timing from manual labels.</p></article>
+                  <article><b>4</b><h3>Convert Peaks to Counts</h3><p>At inference time, find local peaks that satisfy the threshold and minimum-distance rules. The number of peaks is the final TCN count.</p></article>
+                </div>
+
+                <section class="diagram-note">
+                  <h3>Current Evaluation Definition</h3>
+                  <p>Training supervision comes from manual per-jump labels rather than pseudo-label intervals produced by the routing algorithm.</p>
+                  <p>Counting still uses probability peaks, but each target peak comes from the center of a manually confirmed jump.</p>
+                  <p>This dashboard evaluates Venue 2 only; Venue 1 is training data and is excluded from evaluation.</p>
+                </section>
+
+                <section class="diagram-section">
+                  <h3>Step One: Build Training Targets from Manual Intervals</h3>
+                  <p>Labels record the start and end frame of every jump by video and position, giving the TCN both count and temporal location.</p>
+                  <div class="diagram-cards four">
+                    <article><h4>Samples and Input</h4><ul><li>One sample per video + zone</li><li>Pose features: T x 55</li><li>Includes area and zone metadata</li><li>Timeline is uniformly resampled</li></ul></article>
+                    <article><h4>Manual Intervals</h4><ul><li>Read `annotations/*.jump.json`</li><li>Select intervals by zone</li><li>Each record has `start` and `end`</li><li>Interval count is the supervised count</li></ul></article>
+                    <article><h4>Heatmap Target</h4><ul><li>Use each interval center</li><li>Map it to the model timeline</li><li>Place a Gaussian peak nearby</li><li>Merge multiple peaks into the 0-1 range</li></ul></article>
+                    <article><h4>Evaluation Isolation</h4><ul><li>Venue 1 is used for training</li><li>Venue 2 is used for this dashboard</li><li>Training samples do not enter accuracy</li><li>Rows align with workbook positions</li></ul></article>
+                  </div>
+                </section>
+
+                <section class="diagram-section">
+                  <h3>Step Two: Learn Per-Frame Jump Probability</h3>
+                  <div class="diagram-cards three">
+                    <article><h4>Model Input</h4><ul><li>Body-centered keypoint x/y</li><li>Keypoint confidence</li><li>Shoulder, hip, and ankle motion</li><li>Frame visibility</li></ul></article>
+                    <article><h4>Model Output</h4><ul><li>One jump logit per frame</li><li>Sigmoid produces jump probability</li><li>High probability aligns with label centers</li><li>TCN captures temporal context</li></ul></article>
+                    <article><h4>Training Constraints</h4><ul><li>Manual heatmap is the primary target</li><li>Optional count-consistency loss</li><li>Samples are grouped by video</li><li>Evaluation venue leakage is avoided</li></ul></article>
+                  </div>
+                </section>
+
+                <section class="diagram-section">
+                  <h3>Step Three: Convert the Probability Curve to a Count</h3>
+                  <div class="diagram-cards four">
+                    <article><h4>Candidate Peaks</h4><ul><li>Probability exceeds the threshold</li><li>Point must be a local maximum</li><li>Neighboring peaks must be far enough apart</li><li>Only the higher nearby peak is retained</li></ul></article>
+                    <article><h4>Final Count</h4><ul><li>Selected peaks = predicted jumps</li><li>Output is an integer competition score</li><li>Each predicted frame can be reviewed</li><li>Overcounts and misses are traceable</li></ul></article>
+                    <article><h4>Ground-Truth Alignment</h4><ul><li>TCN column stores model counts</li><li>Error = TCN - actual score</li><li>Accuracy uses ±5 and ±10</li><li>Only positions with ground truth are included</li></ul></article>
+                    <article><h4>Dashboard Display</h4><ul><li>Model name is consistently TCN</li><li>Pseudo-label metrics are omitted</li><li>TCN is compared with shoulder and routing</li><li>Venue 2 includes 245 evaluated positions</li></ul></article>
+                  </div>
+                </section>
+
+                <section class="diagram-section">
+                  <h3>Step Four: Dashboard Evaluation Scope</h3>
+                  <div class="diagram-cards three">
+                    <article><h4>Evaluation Data</h4><ul><li>Venue 2 only</li><li>Evaluated positions: 245</li><li>Manual scores are ground truth</li><li>Venue 1 is excluded from accuracy</li></ul></article>
+                    <article><h4>Current Results</h4><ul><li>±10 accuracy: 91.43%</li><li>±5 accuracy: 68.16%</li><li>MAE: 4.84</li><li>Mean bias: +3.29</li></ul></article>
+                    <article><h4>Interpretation</h4><ul><li>TCN output is a model peak count</li><li>Manual intervals supervise training</li><li>Manual scores evaluate Venue 2</li><li>Training and evaluation venues stay separate</li></ul></article>
+                  </div>
+                </section>
+
+                <section class="diagram-summary">
+                  <h3>Overall Strategy</h3>
+                  <p>Manual intervals identify where each jump occurs. The TCN predicts a probability curve from pose sequences, and peak rules convert that curve into the final count.</p>
+                  <div><span>source = manual jump labels</span><span>output = TCN peak count</span><span>evaluation = Venue 2</span><span>n = 245</span><span>acc10 = 91.43%</span></div>
+                </section>
+              </div>
+            </figure>
+          </div>
+        </section>
+      </section>
+
+      <section id="records" class="view">
+        <section class="filters">
+          <select id="recordSet">
+            <option value="actual">With Ground Truth</option>
+            <option value="output">All Outputs</option>
+          </select>
+          <select id="areaFilter">
+            <option value="all">All Venues</option>
+            <option value="Venue 2">Venue 2</option>
+          </select>
+          <input id="recordSearch" type="search" placeholder="Search videos, participants, or schools" />
+        </section>
+
+        <section class="trend-section">
+          <div class="section-head">
+            <h2>Video Trend Comparison</h2>
+            <span id="chartCount" class="count"></span>
+          </div>
+          <div id="positionCharts" class="position-chart-grid"></div>
+          <div id="recordCharts" class="chart-grid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Record Details</h2>
+            <span id="recordCount" class="count"></span>
+          </div>
+          <div class="table-wrap tall">
+            <table>
+              <thead>
+                <tr>
+                  <th>Venue</th>
+                  <th>Video</th>
+                  <th class="num">Position</th>
+                  <th>Participant</th>
+                  <th class="num">Actual</th>
+                  <th class="num">Shoulder</th>
+                  <th class="num">Shoulder Error</th>
+                  <th class="num">Routing</th>
+                  <th class="num">Routing Error</th>
+                  <th class="num">TCN</th>
+                  <th class="num">TCN Error</th>
+                  <th class="num">TCN - Routing</th>
+                  <th class="num">Routing - Shoulder</th>
+                </tr>
+              </thead>
+              <tbody id="recordTable"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="./data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
